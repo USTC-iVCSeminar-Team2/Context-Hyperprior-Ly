@@ -120,19 +120,35 @@ class EntropyCoderGaussianMixture(EntropyCoder):
         # Get a series of symbols according to the minimum and maximum of y_hat
         symbol_max = torch.max(inputs).detach().to(torch.float)
         symbol_min = torch.min(inputs).detach().to(torch.float)
+
         # Get the pmf and cdf of the above symbols
         symbol_samples = torch.arange(symbol_min, symbol_max + 1).to(inputs.device)
         symbol_samples = symbol_samples.reshape((1, 1, 1, -1)).repeat((B, H * W, C, 1))     # B, H*W, C, L
+        L = symbol_samples.shape[-1]
+
         means = means.reshape((B, C, H * W, 1)).permute((0, 2, 1, 3))
         scales = scales.reshape((B, C, H * W, 1)).permute((0, 2, 1, 3))
-        pmf = self.entropy_model.likelihood(symbol_samples, means, scales).detach()
-        pmf = torch.clamp(pmf, min=0.0, max=1.0)
-        cdf = self.pmf_to_cdf(pmf)
-        cdf = cdf.reshape(B, H, W, C, -1).to(torch.device('cpu'))
+
+        raw_cdf = self.entropy_model(symbol_samples + 0.5, means, scales).detach()
+        raw_cdf = raw_cdf + torch.linspace(1e-6, 1e-6 * L, steps=L).view(1, 1, 1, -1).to(raw_cdf.device)
+        cdf_min = raw_cdf[:, :, :, 0].unsqueeze(-1)
+        cdf_max = raw_cdf[:, :, :, L - 1].unsqueeze(-1)
+        length = cdf_max - cdf_min
+        cdf2 = (raw_cdf - cdf_min) / length
+        cdf2 = torch.cat((torch.zeros(*cdf2.shape[0:3], 1).to(cdf2.device), cdf2), dim=-1).clamp(min=0.0, max=1.0)
+        cdf2 = cdf2.reshape(B, H, W, C, -1).to(torch.device('cpu'))
+
+        #######################
+        # pmf = self.entropy_model.likelihood(symbol_samples, means, scales).detach()
+        # pmf = torch.clamp(pmf, min=0.0, max=1.0)
+        # cdf = self.pmf_to_cdf(pmf)
+        # cdf = cdf.reshape(B, H, W, C, -1).to(torch.device('cpu'))
+        #######################
+
         # Get the decoded y_hat, which starts from 0
         inputs = inputs.permute((0, 2, 3, 1))
         inputs_norm = (inputs - symbol_min).to(torch.int16).to(torch.device('cpu'))
-        stream = torchac.encode_float_cdf(cdf, inputs_norm, needs_normalization=True)
+        stream = torchac.encode_float_cdf(cdf2, inputs_norm, needs_normalization=True)
         # The range of the symbols and the latent y shape needs to be transmitted
         side_info = (int(symbol_min), int(symbol_max), H, W)
         return stream, side_info
@@ -146,15 +162,30 @@ class EntropyCoderGaussianMixture(EntropyCoder):
         # Get a series of symbols according to the minimum and maximum of y_hat
         symbol_samples = torch.arange(symbol_min, symbol_max + 1).to(device)
         symbol_samples = symbol_samples.reshape((1, 1, 1, -1)).repeat((B, H * W, C, 1))  # B, H*W, C, L
+        L = symbol_samples.shape[-1]
+
         # Permute the channel and H * W, since the dimension H * W is sparse
         means = means.reshape((B, C, H * W, 1)).permute((0, 2, 1, 3))
         scales = scales.reshape((B, C, H * W, 1)).permute((0, 2, 1, 3))
-        # Get the pmf and cdf of the above symbols
-        pmf = self.entropy_model.likelihood(symbol_samples, means, scales).detach()
-        pmf = torch.clamp(pmf, min=0.0, max=1.0)
-        cdf = self.pmf_to_cdf(pmf)
-        cdf = cdf.reshape(B, H, W, C, -1).to(torch.device('cpu'))
-        y_hat_dec = torchac.decode_float_cdf(cdf, stream, needs_normalization=True).to(device).to(torch.float)
+
+        # Get the cdf of the above symbols
+        raw_cdf = self.entropy_model(symbol_samples + 0.5, means, scales).detach()
+        raw_cdf = raw_cdf + torch.linspace(1e-6, 1e-6 * L, steps=L).view(1, 1, 1, -1).to(raw_cdf.device)
+        cdf_min = raw_cdf[:, :, :, 0].unsqueeze(-1)
+        cdf_max = raw_cdf[:, :, :, L - 1].unsqueeze(-1)
+        length = cdf_max - cdf_min
+        cdf2 = (raw_cdf - cdf_min) / length
+        cdf2 = torch.cat((torch.zeros(*cdf2.shape[0:3], 1).to(cdf2.device), cdf2), dim=-1).clamp(min=0.0, max=1.0)
+        cdf2 = cdf2.reshape(B, H, W, C, -1).to(torch.device('cpu'))
+
+        ########################
+        # pmf = self.entropy_model.likelihood(symbol_samples, means, scales).detach()
+        # pmf = torch.clamp(pmf, min=0.0, max=1.0)
+        # cdf = self.pmf_to_cdf(pmf)
+        # cdf = cdf.reshape(B, H, W, C, -1).to(torch.device('cpu'))
+        ########################
+
+        y_hat_dec = torchac.decode_float_cdf(cdf2, stream, needs_normalization=True).to(device).to(torch.float)
         # Shift to the right data range
         y_hat_dec += symbol_min
         # Permute back: B, H, W, C -> B, C, H, W
