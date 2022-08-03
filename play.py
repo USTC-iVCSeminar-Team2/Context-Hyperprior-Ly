@@ -1,11 +1,17 @@
 import torch
 import torch.nn.functional as F
+from torchvision import transforms
 
 from time import time
 import random
+from thop.profile import profile
+from thop import clever_format
+from PIL import Image
+
 
 from models.model import ContextHyperPrior
 from modules import MaskedConv2d
+from utils import load_checkpoint
 
 
 class AttrDict(dict):
@@ -52,12 +58,27 @@ if __name__ == '__main__':
 
     # analysis_prior_net = AnalysisPrior()
     # synthesis_prior_net = SynthesisPrior()
-    compressor = ContextHyperPrior(a=a, h='', rank='cpu', num_channels=192)
+    device = torch.device('cuda:0')
+    compressor = ContextHyperPrior(a=a, h='', rank='0', num_channels=192)
+    state_dict_com = load_checkpoint('./checkpoint/image_compressor/067/image_compressor_00440000', device)
+    compressor.load_state_dict(state_dict_com['compressor'])
+    compressor = compressor.to(device)
+    print(compressor)
 
-    x = torch.randn(size=(1, 3, 256, 256))
-    compressor.inference(x)
+    image = Image.open(r"E:\Datasets\kodac\kodim19.png").convert('RGB')
+    transform = transforms.Compose([
+        transforms.ToTensor()
+    ])
+    img = transform(image)
+    img = img.unsqueeze(0).cuda()
 
-    loss, bpp_y, bpp_z, disstortion, x_hat = compressor(x)
-    loss.backward()
+    total_ops, total_params = profile(compressor, (img,), verbose=False)
+    macs, params = clever_format([total_ops, total_params], "%.3f")
+    print('MACs:', macs)
+    print('Paras:', params)
+
+    # compressor.inference(x)
+    # loss, bpp_y, bpp_z, disstortion, x_hat = compressor(x)
+    # loss.backward()
 
     _ = 0

@@ -35,6 +35,8 @@ def test(rank, a, h):
     trans_to_img = transforms.ToPILImage()
 
     # Test loop
+    print("{:8s} {:7s} {:7s}  {:9s} {:9s} {} {}".format("index", "PSNR", "MS-SSIM", "bpp_y", "bpp_z", "Enc.Time",
+                                                        "Dec.time"))
     compressor.eval()
     test_result = {}
     with torch.no_grad():
@@ -45,7 +47,7 @@ def test(rank, a, h):
             # psnr, ssim
             img_pil = trans_to_img(img[0, :])
             img_reco_pil = trans_to_img(img_reco[0, :])
-            img_reco_pil.save("./checkpoint/img_reco/483/kodim_reco_{:02d}.png".format(cnt + 1))
+            img_reco_pil.save(os.path.join(a.reco_dir, "kodim_reco_{:02d}.png".format(cnt + 1)))
             psnr = peak_signal_noise_ratio(np.asarray(img_pil), np.asarray(img_reco_pil))
             ms_ssim_ = ms_ssim(img, img_reco, data_range=1.0, size_average=False).item()
             # mssim = structural_similarity(np.asarray(img_pil.convert('L')), np.asarray(img_reco_pil.convert('L')))
@@ -67,6 +69,7 @@ def main():
         '--config_file': Path of your config file
         '--lambda_': The lambda setting for RD loss
         '--checkpoint_path: The path of models
+        '--reco_dir': Reco images output path
     '''
     parser_.add_argument('--model_name', default='image_compressor', type=str)
     parser_.add_argument('--test_dir', default="E:\\Datasets\\kodac", type=str)
@@ -74,7 +77,11 @@ def main():
     parser_.add_argument('--lambda_', default=0.0483, type=float)
     parser_.add_argument('--checkpoint_path', default="./checkpoint/image_compressor/483/image_compressor_00275000",
                          type=str)
+    parser_.add_argument('--reco_dir', default="./checkpoint/img_reco")
     a = parser_.parse_args()
+
+    if not os.path.exists(a.reco_dir):
+        raise Exception("Invalid reco images output path: {}".format(a.reco_dir))
 
     test(rank=0, a=a, h='')
 
