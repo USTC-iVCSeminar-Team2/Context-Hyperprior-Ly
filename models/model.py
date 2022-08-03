@@ -70,7 +70,7 @@ class ContextHyperPrior(nn.Module):
 
         y = self.g_a(x)
         y_hat = self.quantize(y, is_tain=False)
-        z = self.h_a(torch.abs(y))
+        z = self.h_a(y)
         z_hat = self.quantize(z, is_tain=False)
 
         params_hyper = self.h_s(z_hat)
@@ -100,7 +100,7 @@ class ContextHyperPrior(nn.Module):
         for h in range(height):
             for w in range(width):
                 params_ctx_dec = self.context_model(y_hat_dec)
-                params_entropy_dec = torch.cat(([params_hyper_dec, params_ctx_dec]), dim=1)
+                params_entropy_dec = torch.cat((params_hyper_dec, params_ctx_dec), dim=1)
                 # assert (torch.equal(params_entropy[:, :, h: h + 1, w: w + 1], params_entropy_dec[:, :, h: h + 1, w: w + 1]))
 
                 gaussian_dec = self.entropy_parameters(params_entropy_dec)
@@ -113,7 +113,7 @@ class ContextHyperPrior(nn.Module):
                 temp = self.entropy_coder_gaussian_mixture.decompress(stream_y, side_info_y, mean_dec, scale_dec,
                                                                       self.device)
                 y_hat_dec[:, :, h, w] = temp[:, :, h, w]
-                # assert (torch.equal(y_hat[:, :, h, w], y_hat_dec[:, :, h, w]))
+                assert (torch.equal(y_hat[:, :, h, w], y_hat_dec[:, :, h, w]))
 
         assert torch.equal(y_hat, y_hat_dec), "Entropy code decode for y_hat not consistent !"
 

@@ -45,7 +45,7 @@ def test(rank, a, h):
             # psnr, ssim
             img_pil = trans_to_img(img[0, :])
             img_reco_pil = trans_to_img(img_reco[0, :])
-            img_reco_pil.save("./checkpoint/img_reco/483/kodim_reco_{:02d}.png".format(cnt + 1))
+            # img_reco_pil.save("./checkpoint/img_reco/483/kodim_reco_{:02d}.png".format(cnt + 1))
             psnr = peak_signal_noise_ratio(np.asarray(img_pil), np.asarray(img_reco_pil))
             ms_ssim_ = ms_ssim(img, img_reco, data_range=1.0, size_average=False).item()
             # mssim = structural_similarity(np.asarray(img_pil.convert('L')), np.asarray(img_reco_pil.convert('L')))
@@ -71,7 +71,7 @@ def main():
     parser_.add_argument('--test_dir', default="E:\\Datasets\\kodac", type=str)
     parser_.add_argument('--config_file', default="./configs/config.json", type=str)
     parser_.add_argument('--lambda_', default=0.0483, type=float)
-    parser_.add_argument('--checkpoint_path', default="./checkpoint/image_compressor/image_compressor_00002000",
+    parser_.add_argument('--checkpoint_path', default="./checkpoint/image_compressor/483/image_compressor_00275000",
                          type=str)
     a = parser_.parse_args()
 
