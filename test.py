@@ -41,17 +41,18 @@ def test(rank, a, h):
         for cnt, data in enumerate(test_loader):
             data = data.to(device)
             img = data
-            img_reco, bpp_y, bpp_z = compressor.inference(img)
+            img_reco, bpp_y, bpp_z, t_enc, t_dec = compressor.inference(img)
             # psnr, ssim
             img_pil = trans_to_img(img[0, :])
             img_reco_pil = trans_to_img(img_reco[0, :])
-            # img_reco_pil.save("./checkpoint/img_reco/483/kodim_reco_{:02d}.png".format(cnt + 1))
+            img_reco_pil.save("./checkpoint/img_reco/483/kodim_reco_{:02d}.png".format(cnt + 1))
             psnr = peak_signal_noise_ratio(np.asarray(img_pil), np.asarray(img_reco_pil))
             ms_ssim_ = ms_ssim(img, img_reco, data_range=1.0, size_average=False).item()
             # mssim = structural_similarity(np.asarray(img_pil.convert('L')), np.asarray(img_reco_pil.convert('L')))
             # test result
             # test_result['kodim{:02d}'.format(cnt + 1)] = {'psnr': psnr, 'mssim': mssim, 'bpp_y': bpp_y, 'bpp_z': bpp_z}
-            print('kodim{:02d}, {:.4f}, {:.4f}, {:.6f}, {:.6f}'.format(cnt + 1, psnr, ms_ssim_, bpp_y, bpp_z))
+            print('kodim{:02d}, {:.4f}, {:.4f}, {:.6f}, {:.6f}, {:.3f}, {:.3f}'.format(cnt + 1, psnr, ms_ssim_, bpp_y,
+                                                                                       bpp_z, t_enc, t_dec))
 
         # print(test_result)
 

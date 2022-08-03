@@ -119,11 +119,11 @@ class ContextHyperPrior(nn.Module):
 
         x_hat = torch.clamp(self.g_s(y_hat_dec), min=0, max=1)
         time_dec_end = time()
-        print("Enc. time, dec. time: {:.4f}, {:.4f}".format((time_enc_end - time_enc_start), (time_dec_end - time_dec_start)))
+        # print("Enc. time, dec. time: {:.4f}, {:.4f}".format((time_enc_end - time_enc_start), (time_dec_end - time_dec_start)))
 
         bpp_y = len(stream_y) * 8 / (input_.shape[0] * input_.shape[2] * input_.shape[3])
         bpp_z = len(stream_z) * 8 / (input_.shape[0] * input_.shape[2] * input_.shape[3])
-        return x_hat, bpp_y, bpp_z
+        return x_hat, bpp_y, bpp_z, (time_enc_end - time_enc_start), (time_dec_end - time_dec_start)
 
 
 if __name__ == '__main__':
