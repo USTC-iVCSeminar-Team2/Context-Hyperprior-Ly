@@ -5,12 +5,12 @@ from torch import nn
 class MaskedConv2d(nn.Conv2d):
     def __init__(self, *args, mask_type='A', **kwargs):
         super(MaskedConv2d, self).__init__(*args, **kwargs)
-
+        # type 'A' to mask the center, from PixelCNN
         if mask_type not in ('A', 'B'):
             raise ValueError("Invalid \"mask_type\" value: {}".format(mask_type))
-
         self.register_buffer('mask', torch.ones_like(self.weight))
         _, _, h, w = self.mask.size()
+        # setting below weights to 0
         self.mask[:, :, (h // 2), (w // 2 + (mask_type == 'B')):] = 0
         self.mask[:, :, (h // 2 + 1):, :] = 0
 
